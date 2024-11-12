@@ -2,7 +2,7 @@
     "version": 2,
     "builds": [
         {
-            "src": "pool/wsgi.py",
+            "src": "event_manager/wsgi.py",
             "use": "@versal/python",
             "config": {"maxLambdaSize": "15mb", "runtime": "python3.9"}
         },
@@ -19,7 +19,7 @@
         },
         {
             "src": "/(.*)",
-            "dest": "pool/wsgi.py"
+            "dest": "event_manager/wsgi.py"
         }
     ]
 }
