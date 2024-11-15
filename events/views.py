@@ -11,7 +11,6 @@ from django.db.models import Avg
 from events.models import Event, Venue, Ticket, EventReview
 
 
-# View for listing public events on the index page
 class IndexView(generic.ListView):
     template_name = "events/index.html"
     context_object_name = "events"
@@ -22,7 +21,6 @@ class IndexView(generic.ListView):
         """
         query = self.request.GET.get("q")
         if query:
-            # Filter events based on the search query
             return Event.objects.filter(is_public=True, name__icontains=query).order_by("-pub_date")
         else:
             return Event.objects.filter(is_public=True).order_by("-pub_date")
@@ -36,7 +34,6 @@ class IndexView(generic.ListView):
         return context
 
 
-# View for displaying the user's dashboard with their events
 class DashView(LoginRequiredMixin, generic.ListView):
     login_url = "/login/"
     template_name = "events/dashboard.html"
@@ -47,14 +44,12 @@ class DashView(LoginRequiredMixin, generic.ListView):
         return Event.objects.filter(organizer=self.request.user).order_by("-pub_date")
 
 
-# View for editing an event
 @login_required(login_url="/login")
 def EditEvent(request, pk):
     event = get_object_or_404(Event, pk=pk)
     venue = get_object_or_404(Venue, pk=event.venue.pk)
 
     if request.method == "POST":
-        # Update event details from form input
         event.name = request.POST.get('name')
         event.description = request.POST.get('description')
         event.date = request.POST.get('date')
@@ -65,14 +60,12 @@ def EditEvent(request, pk):
         event.max_participants = request.POST.get('max_participants')
         event.status = request.POST.get('status', 'upcoming')
 
-        # Update venue details from form input
         venue.name = request.POST.get('venue_name')
         venue.is_virtual = request.POST.get('is_virtual') == 'on'
         venue.address = request.POST.get('address')
         venue.capacity = request.POST.get('capacity')
         venue.virtual_meeting_link = request.POST.get('virtual_meeting_link')
 
-        # Save the changes to the database
         venue.save()
         event.save()
 
@@ -81,7 +74,6 @@ def EditEvent(request, pk):
     return render(request, "events/edit_event.html", {"event": event})
 
 
-# View for adding a review to an event
 @login_required
 def AddReview(request, pk):
     next_url = request.GET.get('next')
@@ -91,7 +83,6 @@ def AddReview(request, pk):
         review = request.POST.get('review')
         rating = request.POST.get('rating')
 
-        # Create and save a new review for the event
         review_event = EventReview.objects.create(
             event=event, reviewer=request.user, rating=rating, comment=review)
         review_event.save()
@@ -101,13 +92,11 @@ def AddReview(request, pk):
     return redirect('index')
 
 
-# View for deleting an event
 @login_required(login_url="/login")
 def DeleteEvent(request, pk):
     event = get_object_or_404(Event, pk=pk)
     next_url = request.GET.get('next')
 
-    # Ensure only the organizer can delete the event
     if event.organizer != request.user:
         return redirect(next_url or 'index')
 
@@ -118,13 +107,11 @@ def DeleteEvent(request, pk):
     return redirect("index")
 
 
-# View for deleting a review
 @login_required(login_url="/login")
 def DeleteReview(request, pk):
     review = get_object_or_404(EventReview, pk=pk)
     next_url = request.GET.get('next')
 
-    # Ensure only the reviewer can delete the review
     if review.reviewer != request.user:
         return redirect(next_url or 'index')
 
@@ -142,12 +129,10 @@ def EditReview(request, pk):
     next_url = request.GET.get('next', '')
     print(next_url)
 
-    # Check if the user is the owner of the review
     if review.reviewer != request.user:
         return redirect(next_url or "dash")
 
     if request.method == "POST":
-        # Update review details from form input
         review_comment = request.POST.get('review')
         rating = request.POST.get('rating')
         review.comment = review_comment
@@ -160,7 +145,6 @@ def EditReview(request, pk):
     return render(request, "events/edit_review.html", {"review": review, "event": review.event})
 
 
-# View for displaying public event details
 def PublicDetails(request, pk):
     event = get_object_or_404(Event, pk=pk)
     user = request.user
@@ -168,12 +152,10 @@ def PublicDetails(request, pk):
     review = None
     past_event = timezone.now().date() > event.date
 
-    # Get all reviews for the event
     reviews = EventReview.objects.filter(event=event)
     rating = reviews.aggregate(Avg('rating'))
 
     if user.is_authenticated:
-        # Check if the user has a ticket or a review for the event
         ticket = Ticket.objects.filter(event=event, user=user).first()
         review = EventReview.objects.filter(event=event, reviewer=user).first()
 
@@ -190,11 +172,9 @@ def PublicDetails(request, pk):
     })
 
 
-# View for adding a new event
 @login_required(login_url="/login")
 def AddEvent(request):
     if request.method == "POST":
-        # Collect event details from form input
         name = request.POST.get('name')
         description = request.POST.get('description')
         date = request.POST.get('date')
@@ -205,14 +185,12 @@ def AddEvent(request):
         max_participants = request.POST.get('max_participants')
         status = request.POST.get('status', 'upcoming')
 
-        # Collect venue details from form input
         venue_name = request.POST.get('venue_name')
         is_virtual = request.POST.get('is_virtual') == 'on'
         address = request.POST.get('address')
         capacity = request.POST.get('capacity')
         virtual_meeting_link = request.POST.get('virtual_meeting_link')
 
-        # Create a new venue instance
         venue = Venue.objects.create(
             name=venue_name,
             is_virtual=is_virtual,
@@ -224,11 +202,9 @@ def AddEvent(request):
         organizer = request.user
 
         try:
-            # Validate event times
             if start_time >= end_time:
                 raise ValidationError('End time must be after start time.')
 
-            # Create a new event instance
             Event.objects.create(
                 name=name,
                 description=description,
@@ -250,7 +226,6 @@ def AddEvent(request):
     return render(request, "events/add_event.html")
 
 
-# View for handling user login
 def LoginView(request):
     if request.user.is_authenticated:
         return redirect('dash')
@@ -272,7 +247,6 @@ def LoginView(request):
     return render(request, "events/login.html")
 
 
-# View for handling user registration
 def RegisterView(request):
     if request.user.is_authenticated:
         return redirect('home')
@@ -288,7 +262,6 @@ def RegisterView(request):
             return redirect("register")
 
         try:
-            # Create a new user account
             user = User.objects.create_user(
                 email=email, username=username, password=password)
             user.save()
@@ -299,27 +272,23 @@ def RegisterView(request):
     return render(request, "events/register.html")
 
 
-# View for handling user logout
 @login_required(login_url="/login")
 def LogoutView(request):
     logout(request)
     return redirect("index")
 
 
-# View for displaying user profile
 @login_required(login_url="/login")
 def ProfileView(request):
     return render(request, "events/profile.html", {"user": request.user})
 
 
-# View for handling ticket purchase
 @login_required(login_url="/login")
 def BuyTicket(request, pk):
     event = get_object_or_404(Event, pk=pk)
     user = request.user
 
     if request.method == "POST":
-        # Create a new ticket for the event
         ticket = Ticket.objects.create(
             event=event,
             user=user,
